@@ -1,0 +1,63 @@
+{
+  "mqtt": {
+    "broker_url": "tcp://your-broker:1883",
+    "client_id": "industrial-gateway-01",
+    "username": "YOUR_DEVICE_ACCESS_TOKEN",
+    "password": ""
+  },
+  "buffer": {
+    "path": "data/telemetry.db",
+    "max_rows": 100000
+  },
+  "connectors": [
+    {
+      "type": "modbus_tcp",
+      "modbus_tcp": {
+        "id": "inverter-01",
+        "host": "192.168.1.10",
+        "port": 502,
+        "timeout_ms": 5000,
+        "slaves": [
+          {
+            "device_id": "your-platform-device-uuid",
+            "unit_id": 1,
+            "poll_period_ms": 5000,
+            "points": [
+              {
+                "key": "voltage",
+                "address": 0,
+                "length": 1,
+                "data_type": "uint16",
+                "scale": 0.1,
+                "register_type": "holding"
+              },
+              {
+                "key": "current",
+                "address": 1,
+                "length": 1,
+                "data_type": "uint16",
+                "scale": 0.01,
+                "register_type": "holding"
+              },
+              {
+                "key": "power_w",
+                "address": 2,
+                "length": 2,
+                "data_type": "uint32",
+                "scale": 0.001,
+                "register_type": "holding"
+              },
+              {
+                "key": "running",
+                "address": 0,
+                "length": 1,
+                "data_type": "bool",
+                "register_type": "coil"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

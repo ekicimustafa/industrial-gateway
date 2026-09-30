@@ -1,11 +1,3 @@
-// Command gateway is the main entry point for industrial-gateway.
-//
-// Usage:
-//
-//	gateway -config config.json
-//
-// It reads a JSON config, starts the Modbus TCP connector(s), and
-// routes DataPoints through the SQLite buffer to the MQTT broker.
 package main
 
 import (
@@ -14,9 +6,10 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 
+	"github.com/ekicimustafa/industrial-gateway/config"
 	"github.com/ekicimustafa/industrial-gateway/connector/modbus"
 	"github.com/ekicimustafa/industrial-gateway/internal"
 	gw_mqtt "github.com/ekicimustafa/industrial-gateway/mqtt"
@@ -28,39 +21,17 @@ func main() {
 		Level: slog.LevelInfo,
 	})))
 
-	_ = flag.String("config", "config.json", "path to config.json")
+	cfgPath := flag.String("config", "config.json", "path to config.json")
 	flag.Parse()
 
-	// Hardcoded example config — replace with JSON loading in the next step.
-	modbusCfg := modbus.ConnectorConfig{
-		ID:      "conn-modbus-1",
-		Host:    "127.0.0.1",
-		Port:    5020, // matches the pymodbus simulator from on-prem docs
-		Timeout: 5 * time.Second,
-		Slaves: []modbus.SlaveConfig{
-			{
-				DeviceID:   "device-uuid-example",
-				UnitID:     1,
-				PollPeriod: 5 * time.Second,
-				Points: []modbus.Point{
-					{Key: "voltage", Address: 0, Length: 1, DataType: modbus.DataUint16, Scale: 0.1, RegisterType: modbus.RegisterHolding},
-					{Key: "current", Address: 1, Length: 1, DataType: modbus.DataUint16, Scale: 0.01, RegisterType: modbus.RegisterHolding},
-					{Key: "power", Address: 2, Length: 2, DataType: modbus.DataUint32, Scale: 0.001, RegisterType: modbus.RegisterHolding},
-				},
-			},
-		},
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		slog.Error("failed to load config", "err", err)
+		os.Exit(1)
 	}
+	slog.Info("config loaded", "connectors", len(cfg.Connectors))
 
-	mqttCfg := gw_mqtt.Config{
-		BrokerURL:   "tcp://localhost:1883",
-		ClientID:    "industrial-gateway-dev",
-		Username:    "", // ThingsBoard access token
-		Password:    "",
-		TopicPrefix: "v1/devices/me",
-	}
-
-	// Open SQLite buffer
-	buf, err := buffer.Open("data/telemetry.db")
+	buf, err := buffer.Open(cfg.Buffer.Path)
 	if err != nil {
 		slog.Error("buffer open failed", "err", err)
 		os.Exit(1)
@@ -70,23 +41,34 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	// DataPoint channel: connectors → publisher
 	dataCh := make(chan internal.DataPoint, 512)
 
-	// Start MQTT publisher
+	mqttCfg := cfg.MQTT.ToMQTTConfig("industrial-gateway")
 	pub := gw_mqtt.NewPublisher(mqttCfg, buf)
 	go pub.Run(ctx, dataCh)
 	defer pub.Disconnect()
 
-	// Start Modbus TCP connector
-	conn := modbus.NewTCP(modbusCfg)
-	if err := conn.Start(ctx, dataCh); err != nil {
-		slog.Error("modbus connector failed to start", "err", err)
-		os.Exit(1)
+	var wg sync.WaitGroup
+	for _, entry := range cfg.Connectors {
+		switch entry.Type {
+		case "modbus_tcp":
+			conn := modbus.NewTCP(entry.ModbusTCP.ToModbusConfig())
+			if err := conn.Start(ctx, dataCh); err != nil {
+				slog.Error("connector start failed", "err", err)
+				os.Exit(1)
+			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-ctx.Done()
+				conn.Stop()
+			}()
+		}
 	}
-	defer conn.Stop()
 
-	slog.Info("gateway started — waiting for shutdown signal")
+	slog.Info("gateway started — press Ctrl+C to stop")
 	<-ctx.Done()
-	slog.Info("gateway shutting down")
+	slog.Info("shutting down...")
+	wg.Wait()
+	slog.Info("gateway stopped")
 }
