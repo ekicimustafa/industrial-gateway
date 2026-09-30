@@ -1,5 +1,7 @@
 # industrial-gateway
 
+![CI](https://github.com/ekicimustafa/industrial-gateway/actions/workflows/ci.yml/badge.svg)
+
 A production-grade IoT gateway written in Go for industrial automation environments.
 Reads data from field devices over Modbus TCP and forwards it to an MQTT broker with a durable offline buffer — no data is lost during network outages.
 
