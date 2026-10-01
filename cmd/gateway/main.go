@@ -11,7 +11,7 @@ import (
 
 	"github.com/ekicimustafa/industrial-gateway/config"
 	"github.com/ekicimustafa/industrial-gateway/connector/modbus"
-	"github.com/ekicimustafa/industrial-gateway/internal"
+	"github.com/ekicimustafa/industrial-gateway/connector"
 	gw_mqtt "github.com/ekicimustafa/industrial-gateway/mqtt"
 	"github.com/ekicimustafa/industrial-gateway/mqtt/buffer"
 )
@@ -41,7 +41,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	dataCh := make(chan internal.DataPoint, 512)
+	dataCh := make(chan connector.DataPoint, 512)
 
 	mqttCfg := cfg.MQTT.ToMQTTConfig("industrial-gateway")
 	pub := gw_mqtt.NewPublisher(mqttCfg, buf)

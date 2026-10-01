@@ -11,7 +11,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/ekicimustafa/industrial-gateway/internal"
+	"github.com/ekicimustafa/industrial-gateway/connector"
 	"github.com/ekicimustafa/industrial-gateway/mqtt/buffer"
 )
 
@@ -49,7 +49,7 @@ func NewPublisher(cfg Config, buf *buffer.Buffer) *Publisher {
 // Run starts two goroutines: one writes incoming DataPoints to the buffer,
 // the other flushes the buffer to MQTT on a ticker.
 // Run blocks until ctx is cancelled.
-func (p *Publisher) Run(ctx context.Context, in <-chan internal.DataPoint) {
+func (p *Publisher) Run(ctx context.Context, in <-chan connector.DataPoint) {
 	var wg sync.WaitGroup
 
 	// Writer: channel → buffer
@@ -69,12 +69,12 @@ func (p *Publisher) Run(ctx context.Context, in <-chan internal.DataPoint) {
 	wg.Wait()
 }
 
-func (p *Publisher) writeLoop(ctx context.Context, in <-chan internal.DataPoint) {
+func (p *Publisher) writeLoop(ctx context.Context, in <-chan connector.DataPoint) {
 	// Collect up to batchSize points or wait 50ms before writing to SQLite
 	// to reduce write amplification.
 	const collectTimeout = 50 * time.Millisecond
 
-	batch := make([]internal.DataPoint, 0, p.batchSize)
+	batch := make([]connector.DataPoint, 0, p.batchSize)
 	timer := time.NewTimer(collectTimeout)
 	defer timer.Stop()
 

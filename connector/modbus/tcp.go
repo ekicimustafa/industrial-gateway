@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/ekicimustafa/industrial-gateway/connector"
-	"github.com/ekicimustafa/industrial-gateway/internal"
 )
 
 // TCPConnector reads Modbus TCP holding/input registers and coils.
@@ -24,9 +23,9 @@ type TCPConnector struct {
 	status connector.Status
 	mu     sync.Mutex // guards conn AND status
 
-	conn    net.Conn
-	txID    uint16 // Modbus transaction ID counter
-	cancel  context.CancelFunc
+	conn   net.Conn
+	txID   uint16 // Modbus transaction ID counter
+	cancel context.CancelFunc
 }
 
 // NewTCP creates a TCPConnector from the given config.
@@ -43,7 +42,7 @@ func NewTCP(cfg ConnectorConfig) *TCPConnector {
 // Start connects to the TCP host and begins polling all slaves.
 // Each slave runs in its own goroutine with its own ticker — no slave
 // blocks another, and each honours its own PollPeriod (SB-388 fix).
-func (c *TCPConnector) Start(ctx context.Context, out chan<- internal.DataPoint) error {
+func (c *TCPConnector) Start(ctx context.Context, out chan<- connector.DataPoint) error {
 	c.setStatus(connector.StatusConnecting)
 	if err := c.dial(); err != nil {
 		c.setStatus(connector.StatusError)
@@ -71,7 +70,7 @@ func (c *TCPConnector) Start(ctx context.Context, out chan<- internal.DataPoint)
 	return nil
 }
 
-func (c *TCPConnector) pollSlave(ctx context.Context, s SlaveConfig, out chan<- internal.DataPoint) {
+func (c *TCPConnector) pollSlave(ctx context.Context, s SlaveConfig, out chan<- connector.DataPoint) {
 	period := s.PollPeriod
 	if period <= 0 {
 		period = 10 * time.Second
@@ -95,7 +94,7 @@ func (c *TCPConnector) pollSlave(ctx context.Context, s SlaveConfig, out chan<- 
 					c.reconnect()
 					break // retry on next tick
 				}
-				out <- internal.NewDataPoint(c.cfg.ID, s.DeviceID, pt.Key, value)
+				out <- connector.NewDataPoint(c.cfg.ID, s.DeviceID, pt.Key, value)
 			}
 		}
 	}
@@ -163,8 +162,8 @@ func (c *TCPConnector) buildADU(unit, fc byte, addr, qty uint16) []byte {
 	binary.BigEndian.PutUint16(adu[0:], c.txID) // transaction ID
 	binary.BigEndian.PutUint16(adu[2:], 0)      // protocol ID
 	binary.BigEndian.PutUint16(adu[4:], 6)      // length of remaining
-	adu[6] = unit                                // unit ID
-	adu[7] = fc                                  // function code
+	adu[6] = unit                               // unit ID
+	adu[7] = fc                                 // function code
 	binary.BigEndian.PutUint16(adu[8:], addr)
 	binary.BigEndian.PutUint16(adu[10:], qty)
 	return adu

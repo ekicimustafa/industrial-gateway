@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ekicimustafa/industrial-gateway/internal"
+	"github.com/ekicimustafa/industrial-gateway/connector"
 	_ "modernc.org/sqlite"
 )
 
@@ -60,7 +60,7 @@ func Open(path string) (*Buffer, error) {
 
 // Write persists a batch of DataPoints. Same-device same-timestamp rows are
 // merged (keys are unioned), matching the Python gateway behaviour.
-func (b *Buffer) Write(points []internal.DataPoint) error {
+func (b *Buffer) Write(points []connector.DataPoint) error {
 	if len(points) == 0 {
 		return nil
 	}
