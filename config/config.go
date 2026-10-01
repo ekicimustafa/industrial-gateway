@@ -50,11 +50,11 @@ type ConnectorEntry struct {
 // -------------------------------------------------------------------
 
 type ModbusTCPConfig struct {
-	ID         string        `json:"id"`
-	Host       string        `json:"host"`
-	Port       int           `json:"port"`        // default: 502
-	TimeoutMs  int           `json:"timeout_ms"`  // default: 5000
-	Slaves     []SlaveConfig `json:"slaves"`
+	ID        string        `json:"id"`
+	Host      string        `json:"host"`
+	Port      int           `json:"port"`       // default: 502
+	TimeoutMs int           `json:"timeout_ms"` // default: 5000
+	Slaves    []SlaveConfig `json:"slaves"`
 }
 
 type SlaveConfig struct {

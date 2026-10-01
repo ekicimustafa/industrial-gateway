@@ -23,9 +23,9 @@ type TCPConnector struct {
 	status connector.Status
 	mu     sync.Mutex // guards conn AND status
 
-	conn    net.Conn
-	txID    uint16 // Modbus transaction ID counter
-	cancel  context.CancelFunc
+	conn   net.Conn
+	txID   uint16 // Modbus transaction ID counter
+	cancel context.CancelFunc
 }
 
 // NewTCP creates a TCPConnector from the given config.
@@ -162,8 +162,8 @@ func (c *TCPConnector) buildADU(unit, fc byte, addr, qty uint16) []byte {
 	binary.BigEndian.PutUint16(adu[0:], c.txID) // transaction ID
 	binary.BigEndian.PutUint16(adu[2:], 0)      // protocol ID
 	binary.BigEndian.PutUint16(adu[4:], 6)      // length of remaining
-	adu[6] = unit                                // unit ID
-	adu[7] = fc                                  // function code
+	adu[6] = unit                               // unit ID
+	adu[7] = fc                                 // function code
 	binary.BigEndian.PutUint16(adu[8:], addr)
 	binary.BigEndian.PutUint16(adu[10:], qty)
 	return adu

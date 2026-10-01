@@ -10,8 +10,8 @@ import (
 	"syscall"
 
 	"github.com/ekicimustafa/industrial-gateway/config"
-	"github.com/ekicimustafa/industrial-gateway/connector/modbus"
 	"github.com/ekicimustafa/industrial-gateway/connector"
+	"github.com/ekicimustafa/industrial-gateway/connector/modbus"
 	gw_mqtt "github.com/ekicimustafa/industrial-gateway/mqtt"
 	"github.com/ekicimustafa/industrial-gateway/mqtt/buffer"
 )

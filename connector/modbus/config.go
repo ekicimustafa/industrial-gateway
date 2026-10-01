@@ -25,11 +25,11 @@ const (
 
 // Point is a single register-to-key mapping on a slave device.
 type Point struct {
-	Key        string       // telemetry key sent to platform
-	Address    uint16       // Modbus register address (0-based)
-	Length     uint16       // number of registers (1 for 16-bit, 2 for 32-bit)
-	DataType   DataType     // how to decode raw bytes
-	Scale      float64      // multiply decoded value (0 → treated as 1)
+	Key          string   // telemetry key sent to platform
+	Address      uint16   // Modbus register address (0-based)
+	Length       uint16   // number of registers (1 for 16-bit, 2 for 32-bit)
+	DataType     DataType // how to decode raw bytes
+	Scale        float64  // multiply decoded value (0 → treated as 1)
 	RegisterType RegisterType
 }
 
