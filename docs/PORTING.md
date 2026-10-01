@@ -8,6 +8,39 @@ Config formatı: SolarTools platformunun `config_full` ile gönderdiği format
 (`connectors[].config.master.slaves[]`, `deviceName`, `timeseries`, `functionCode`, …),
 yani solartools-gateway'deki `conf/gateway.json` formatı. İleride ThingsBoard uyumu ayrıca ele alınabilir.
 
+## Nerede kaldık / sırada ne var
+
+**Şu an:** 1. adım bitti (`main`'de, CI yeşil). Sıradaki iş: 2. adım — `settings.py`.
+
+**Bekleyen kararlar**
+
+- [ ] İş akışı: her adım ayrı branch + PR + merge mi olsun (CI merge'den önce PR'da çalışır; GitHub Pull Shark / YOLO rozetleri)?
+- [ ] Bulgular (aşağıdaki tablo) GitHub issue olarak açılsın, PR'larla `Closes #n` ile kapansın mı?
+- [ ] `shell_exec` (SB-387): sabit izin listesiyle mi taşınsın, hiç taşınmasın mı?
+
+**Yapılacaklar (sırayla)**
+
+- [ ] CI: `actions/checkout@v4` ve `setup-go@v5` Node 20 kullanıyor, kullanımdan kalkıyor → sürüm yükselt (küçük ilk PR adayı)
+- [ ] Adım 2 — `settings.py` → `settings/` (SB-389 bozuk config burada kapanır)
+- [ ] Adım 3 — `mqtt/buffer.py` ile Go buffer'ı hizala
+- [ ] Adım 4 — `timeboxed_io.py` + `publisher.py` → ortak MQTT client
+- [ ] Adım 5 — Modbus TCP, ardından RTU (platform formatı; prototip `tcp.go` gider)
+- [ ] Adım 6 — `config_receiver.py` → `rpc/` (paralel komut, yapılandırılmış ack, request_id dedupe)
+- [ ] Adım 7 — `gateway_service.py` → `gateway/`
+- [ ] Adım 8 — `main.py` → `cmd/gateway/`; README'yi yeni yapıya göre güncelle, prototip `config/` paketini kaldır
+- [ ] Sonra: S7, OPC-UA, RTU bridge, Enerjisa, REST, SNMP, BACnet, Socket, ZeroExport, log_shipper, updater, provisioning
+- [ ] Sunucuya erişim gelince: oradaki konuşma geçmişini ve notları buraya aktar, bu dosyayla birleştir
+
+## Günlük
+
+**2026-10-01**
+
+- Sunucu (SSH) internetsiz kaldı; çalışma yerel Windows makinesine taşındı. Konuşma geçmişi ve eski notlar sunucuda kaldı.
+- Yerel ortam: GitHub CLI ve Go 1.27 kuruldu; `industrial-gateway` ve referans için `solartools-gateway` klonlandı; Jira (Atlassian MCP) bağlandı.
+- Jira tarandı: Go port için ayrı issue yok; Python gateway denetiminde bulunan hatalar SB-386…390 olarak açılmış (tabloya işlendi).
+- `gateway_service.py` (1394 satır), `config_receiver.py`, `base.py`, `settings.py` tamamen okundu; plan bağımlılık sırasına göre çıkarıldı.
+- Adım 1 tamamlandı ve push edildi (8 commit). Ek olarak: 4 dosyada gofmt düzeltmesi, `.gitattributes` (Windows CRLF), CI'a gofmt + vet kontrolü. CI'da `-race` testleri geçti.
+
 ## Plan (bağımlılık sırası)
 
 | Faz | Adım | Python | Go | Durum |
@@ -31,6 +64,8 @@ platform formatına göre yeniden yazılacak, o zamana kadar derlenmeye devam ed
 - **Sıra Jira'ya göre değil, bağımlılığa göre.** Jira'daki hatalar ilgili dosya taşınırken kapanır.
 - `Connector.update_config` taşınmadı: Python'da hiçbir yerden çağrılmıyor (config değişince connector yeniden başlatılıyor).
 - Connector state dosyası (`_load_state`/`_save_state`) sadece Enerjisa kullanıyor → Enerjisa taşınırken eklenecek.
+- **Commit'ler küçük ama gerçek parçalar**; her commit tek başına derlenir ve testleri geçer (push öncesi her biri ayrı klasörde doğrulanır). Boş/yapay commit yok.
+- Go kaynakları her platformda LF (`.gitattributes`); CI gofmt ve `go vet` hatasında kırılır.
 
 ## Python'da bulunan sorunlar
 
