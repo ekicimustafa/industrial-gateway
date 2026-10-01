@@ -23,9 +23,9 @@ type TCPConnector struct {
 	status connector.Status
 	mu     sync.Mutex // guards conn AND status
 
-	conn   net.Conn
-	txID   uint16 // Modbus transaction ID counter
-	cancel context.CancelFunc
+	conn    net.Conn
+	txID    uint16 // Modbus transaction ID counter
+	cancel  context.CancelFunc
 }
 
 // NewTCP creates a TCPConnector from the given config.
@@ -162,8 +162,8 @@ func (c *TCPConnector) buildADU(unit, fc byte, addr, qty uint16) []byte {
 	binary.BigEndian.PutUint16(adu[0:], c.txID) // transaction ID
 	binary.BigEndian.PutUint16(adu[2:], 0)      // protocol ID
 	binary.BigEndian.PutUint16(adu[4:], 6)      // length of remaining
-	adu[6] = unit                               // unit ID
-	adu[7] = fc                                 // function code
+	adu[6] = unit                                // unit ID
+	adu[7] = fc                                  // function code
 	binary.BigEndian.PutUint16(adu[8:], addr)
 	binary.BigEndian.PutUint16(adu[10:], qty)
 	return adu
@@ -231,18 +231,18 @@ func (c *TCPConnector) Status() connector.Status {
 }
 
 // HandleRPC writes a single register value (FC06) to the device.
-func (c *TCPConnector) HandleRPC(_ context.Context, req connector.RPCRequest) connector.RPCResponse {
+func (c *TCPConnector) HandleRPC(_ context.Context, req RPCRequest) RPCResponse {
 	addr, ok1 := req.Params["address"].(float64)
 	value, ok2 := req.Params["value"].(float64)
 	if !ok1 || !ok2 {
-		return connector.RPCResponse{ID: req.ID, Error: "params must have address and value (number)"}
+		return RPCResponse{ID: req.ID, Error: "params must have address and value (number)"}
 	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.conn == nil {
-		return connector.RPCResponse{ID: req.ID, Error: "not connected"}
+		return RPCResponse{ID: req.ID, Error: "not connected"}
 	}
 
 	// FC06: write single register
@@ -258,15 +258,15 @@ func (c *TCPConnector) HandleRPC(_ context.Context, req connector.RPCRequest) co
 
 	c.conn.SetDeadline(time.Now().Add(c.cfg.Timeout)) //nolint:errcheck
 	if _, err := c.conn.Write(adu); err != nil {
-		return connector.RPCResponse{ID: req.ID, Error: err.Error()}
+		return RPCResponse{ID: req.ID, Error: err.Error()}
 	}
 
 	// Read echo back (12 bytes)
 	resp := make([]byte, 12)
 	if _, err := readFull(c.conn, resp); err != nil {
-		return connector.RPCResponse{ID: req.ID, Error: err.Error()}
+		return RPCResponse{ID: req.ID, Error: err.Error()}
 	}
-	return connector.RPCResponse{ID: req.ID, Success: true}
+	return RPCResponse{ID: req.ID, Success: true}
 }
 
 func (c *TCPConnector) dial() error {
