@@ -12,15 +12,15 @@ yani solartools-gateway'deki `conf/gateway.json` formatı. İleride ThingsBoard 
 
 **Şu an:** 1. adım bitti (`main`'de, CI yeşil). Sıradaki iş: 2. adım — `settings.py`.
 
-**Bekleyen kararlar**
+**Kararlar (2026-10-02)**
 
-- [ ] İş akışı: her adım ayrı branch + PR + merge mi olsun (CI merge'den önce PR'da çalışır; GitHub Pull Shark / YOLO rozetleri)?
-- [ ] Bulgular (aşağıdaki tablo) GitHub issue olarak açılsın, PR'larla `Closes #n` ile kapansın mı?
-- [ ] `shell_exec` (SB-387): sabit izin listesiyle mi taşınsın, hiç taşınmasın mı?
+- [x] İş akışı: her iş ayrı branch → PR → CI → merge. İlk örnek: #1 (CI action sürümleri).
+- [x] `shell_exec` genel amaçlı shell olarak **taşınmaz**; ileride gerekirse yalnızca sabit, izinli yönetim komutları.
+- [ ] GitHub issue'ları: Go tarafındaki işler (adımlar) için açılabilir; Python sürümündeki güvenlik bulgularının herkese açık repoda ne kadar ayrıntılı yazılacağı netleşince.
 
 **Yapılacaklar (sırayla)**
 
-- [ ] CI: `actions/checkout@v4` ve `setup-go@v5` Node 20 kullanıyor, kullanımdan kalkıyor → sürüm yükselt (küçük ilk PR adayı)
+- [x] CI: `actions/checkout` ve `setup-go` v7'ye (Node 24) yükseltildi — PR #1
 - [ ] Adım 2 — `settings.py` → `settings/` (SB-389 bozuk config burada kapanır)
 - [ ] Adım 3 — `mqtt/buffer.py` ile Go buffer'ı hizala
 - [ ] Adım 4 — `timeboxed_io.py` + `publisher.py` → ortak MQTT client
