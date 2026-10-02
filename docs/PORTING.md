@@ -29,7 +29,8 @@ yani solartools-gateway'deki `conf/gateway.json` formatı. İleride ThingsBoard 
 - [ ] Adım 7 — `gateway_service.py` → `gateway/`
 - [ ] Adım 8 — `main.py` → `cmd/gateway/`; README'yi yeni yapıya göre güncelle, prototip `config/` paketini kaldır
 - [ ] Sonra: S7, OPC-UA, RTU bridge, Enerjisa, REST, SNMP, BACnet, Socket, ZeroExport, log_shipper, updater, provisioning
-- [ ] Sunucuya erişim gelince: oradaki konuşma geçmişini ve notları buraya aktar, bu dosyayla birleştir
+- [x] Sunucudaki notlar aktarıldı (2026-10-02); port'u etkileyenler aşağıdaki tablolara işlendi
+- [ ] Adım 4/7 öncesi: sunucu notlarındaki `_mqtt_deadman_supervisor` (180 sn → `os._exit(70)`) yerel Python klonunda yok, yerine `_mqtt_watchdog` var → solartools-gateway'in güncel `main`'i çekilip hangisinin geçerli olduğu kontrol edilecek
 
 ## Günlük
 
@@ -40,6 +41,10 @@ yani solartools-gateway'deki `conf/gateway.json` formatı. İleride ThingsBoard 
 - Jira tarandı: Go port için ayrı issue yok; Python gateway denetiminde bulunan hatalar SB-386…390 olarak açılmış (tabloya işlendi).
 - `gateway_service.py` (1394 satır), `config_receiver.py`, `base.py`, `settings.py` tamamen okundu; plan bağımlılık sırasına göre çıkarıldı.
 - Adım 1 tamamlandı ve push edildi (8 commit). Ek olarak: 4 dosyada gofmt düzeltmesi, `.gitattributes` (Windows CRLF), CI'a gofmt + vet kontrolü. CI'da `-race` testleri geçti.
+
+**2026-10-02**
+
+- Sunucudaki memory ve kişisel gelişim notları yerel makineye aktarıldı. Gateway kod incelemesi (2026-09-30), mimari ve saha hata notlarından port'u etkileyenler bu dosyaya işlendi (bulgular 15–18, RTU kararı).
 
 ## Plan (bağımlılık sırası)
 
@@ -66,6 +71,8 @@ platform formatına göre yeniden yazılacak, o zamana kadar derlenmeye devam ed
 - Connector state dosyası (`_load_state`/`_save_state`) sadece Enerjisa kullanıyor → Enerjisa taşınırken eklenecek.
 - **Commit'ler küçük ama gerçek parçalar**; her commit tek başına derlenir ve testleri geçer (push öncesi her biri ayrı klasörde doğrulanır). Boş/yapay commit yok.
 - Go kaynakları her platformda LF (`.gitattributes`); CI gofmt ve `go vet` hatasında kırılır.
+- **Modbus RTU tek döngü kalır.** Python'da RTU önce slave başına task'lardı; paylaşılan seri hatta reconnect fırtınası yarattığı için SB-270'te (2026-06-22) ThingsBoard tarzı tek sıralı döngüye geçildi. Go'da da RTU için slave başına goroutine açılmaz; SB-388 bu döngünün içinde slave başına "sıradaki poll zamanı" ile çözülür. TCP'de slave başına goroutine doğru.
+- **Taşınmayacak ölü kod:** `connectors/modbus/server.py` (stub), `publisher.publish_device_connect/disconnect` (hiç çağrılmıyor), `ConnectorType.MQTT_SUB` (implementasyonu yok; sabit sadece tip listesinde duruyor).
 
 ## Python'da bulunan sorunlar
 
@@ -85,6 +92,10 @@ platform formatına göre yeniden yazılacak, o zamana kadar derlenmeye devam ed
 | 12 | `base.py` / `settings.py` | `int(os.getenv(...))` hatalı değerde process'i çökertiyor | `internal/env`: uyarı + varsayılan (1. adım) | — |
 | 13 | `base.py` `_safe_run` | Bekleme döngüsü stop'u 5 sn'de bir kontrol ediyor (polling) | `select` + `ctx.Done()` anında uyanıyor (1. adım) | — |
 | 14 | `connector/modbus/tcp.go` (Go prototip) | `HandleRPC` yazmayı unit `0xFF`'e gönderiyor, hedef slave'e değil | 5. adımda yeniden yazılıyor | — |
+| 15 | `gateway_service.py` `_apply_full_config` | Connector stop'u sınırsız bekliyordu; pymodbus 60 sn bloklayınca config_full zaman aşımı → `_config_apply_lock` tutulu kaldığı için sonraki deploy'lar da zincirleme hata (commit 332fda6 ile 30 sn sınır) | `Base.Stop` zaten sınırlı (1. adım); toplam stop süresi 7. adımda | — |
+| 16 | `config_receiver.py` | Zaman aşımında `asyncio.shield` handler'ı arka planda çalıştırmaya devam ediyor ama lock'u tutuyor | Handler'lar `context` ile iptal edilebilir olacak (6. adım) | — |
+| 17 | `mqtt/publisher.py` (Mayıs 2026'da düzeltildi) | Buffer boşken flush zaman damgası güncellenmiyordu → deadman 180 sn'de process'i öldürüyordu → RS485 hattı resetleniyor → yine veri yok (kısır döngü) | Sağlık sinyali "veri gönderdim" değil "döngü çalıştı" olmalı (4. adım) | — |
+| 18 | `settings.py` | Telemetri flush varsayılanı 50 ms (20 Hz SQLite okuma) gömülü donanımda CPU'yu yoruyor | Varsayılan 500 ms–1 sn düşünülecek (2./4. adım) | — |
 
 ---
 
